@@ -11,46 +11,39 @@ export class TaskApiService {
 
   constructor(private http: HttpClient, private authService: AuthService) { }
 
-  getTasksCreatedBy(token: string): Observable<any>{
-    const headers = new HttpHeaders({
-      'x-access-token': this.authService.getToken() || "",
+  private getHeaders(): HttpHeaders {
+    const token = this.authService.getToken();
+    return new HttpHeaders({
+      'x-access-token': token || "",
     });
-    return this.http.get(`${this.apiUrl}/createdby`, { headers })
   }
 
-  getTasksAssignedTo(token: string): Observable<any>{
-    const headers = new HttpHeaders({
-      'x-access-token': this.authService.getToken() || "",
-    });
-    return this.http.get(`${this.apiUrl}/assignedto`, { headers })
+  getTasksCreatedBy(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/createdby`, { headers: this.getHeaders() });
   }
 
-  updateTaskStatus(token: string, taskUid: string, done: boolean): Observable<any>{
-    const headers = new HttpHeaders({
-      'x-access-token': this.authService.getToken() || "",
-    });
-    const body = {done};
-
-    return this.http.patch(`${this.apiUrl}/${taskUid}`, body, { headers });
+  getTasksAssignedTo(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/assignedto`, { headers: this.getHeaders() });
   }
 
-  deleteTask(token: string, taskUid: string): Observable<any>{
-    const headers = new HttpHeaders({
-      'x-access-token': this.authService.getToken() || "",
-    });
-
-    return this.http.delete(`${this.apiUrl}/${taskUid}`, { headers });
+  updateTaskStatus(taskUid: string, done: boolean): Observable<any> {
+    const body = { done };
+    return this.http.patch(`${this.apiUrl}/${taskUid}`, body, { headers: this.getHeaders() });
   }
 
-  createTask(description: string, assignedToUid: string): Observable<any>{
-    const headers = new HttpHeaders({
-      'x-access-token': this.authService.getToken() || "",
-    });
+  deleteTask(taskUid: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/${taskUid}`, { headers: this.getHeaders() });
+  }
+
+  createTask(description: string, assignedToUid: string): Observable<any> {
     const body = {
       description,
       assignedToUid
     };
-    return this.http.post(this.apiUrl, body, {headers})
+    return this.http.post(this.apiUrl, body, { headers: this.getHeaders() });
   }
-  
+
+  updateTask(taskId: string, task: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/${taskId}`, task, { headers: this.getHeaders() });
+  }
 }

@@ -18,6 +18,7 @@ wss.on('connection', (ws) => {
 
     ws.on('message', (message) => {
         console.log("Received message: " + message);
+        // Broadcast le message à tous les clients connectés
         broadcastMessage(JSON.parse(message));
     });
 

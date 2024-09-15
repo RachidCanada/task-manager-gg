@@ -1,11 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { Task } from '../models/task.model';
 import { TaskService } from '../services/task.service';
 import { Router } from '@angular/router';
 import { TaskAPI } from '../models/task-api.model';
 import { TaskApiService } from '../services/task-api.service';
 import { WebSocketService } from '../services/websocket.service';
-import {MatSnackBar} from '@angular/material/snack-bar';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '../services/auth.service';
 import { Capacitor } from '@capacitor/core';
 
@@ -14,7 +14,7 @@ import { Capacitor } from '@capacitor/core';
   templateUrl: './task-list.component.html',
   styleUrl: './task-list.component.scss'
 })
-export class TaskListComponent {
+export class TaskListComponent implements OnInit {
   tasks: Task[] = [];
   isMobile: boolean;
   showCreatedBy: boolean;
@@ -22,7 +22,6 @@ export class TaskListComponent {
 
   createdTasks: TaskAPI[] = [];
   assignedTasks: TaskAPI[] = [];
-  private token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InJlbmFuQGdtYWlsLmNvbSIsImlkIjoiNjZjM2VmZmU3ZTA0MWU4Y2MzNGEyZWU4IiwiZXhwIjoxNzI3MDM2NDA5fQ.NAiFM6MfLNHUxJQZQmtX60k8o_CBYf4kCCcRRxwC0NU";
   lastUidAssigned = "";
 
   constructor(
@@ -35,35 +34,44 @@ export class TaskListComponent {
     this.isMobile = Capacitor.isNativePlatform();
     this.showCreatedBy = true;
     this.showAssignedTo = false;
+  }
 
+  ngOnInit() {
     this.fetchTasks();
-
-    
 
     this.webSocketService.getMessage().subscribe(
       (message: any) => {
         if(message.event === "taskCreated"){
           this.fetchTasks();
-          
-          
           if(message.assignedToUid === this.authService.getId()){
             this.snackBar.open("New Task assigned To you!", "OK", {
               duration: 5000,
             });
             this.lastUidAssigned = message.taskUid;
           }
+        } else if (message.event === 'taskUpdated' && message.createdBy === this.authService.getId()) {
+          this.snackBar.open("A task you created has been updated!", "OK", {
+            duration: 5000,
+          });
+          this.fetchTasks();
+        } else if (message.event === 'taskDeleted' && message.assignedTo === this.authService.getId()) {
+          this.snackBar.open("A task assigned to you has been deleted!", "OK", {
+            duration: 5000,
+          });
+          this.fetchTasks();
         }
-    });
+      }
+    );
   }
 
   fetchTasks(){
-    this.taskApiService.getTasksCreatedBy(this.token).subscribe(
+    this.taskApiService.getTasksCreatedBy().subscribe(
       (res) => {
         this.createdTasks = res.allTasks;
       }
     );
 
-    this.taskApiService.getTasksAssignedTo(this.token).subscribe(
+    this.taskApiService.getTasksAssignedTo().subscribe(
       (res) => {
         this.assignedTasks = res.allTasks;
         console.log(this.assignedTasks)
@@ -72,7 +80,7 @@ export class TaskListComponent {
   }
 
   changeStatus(task: TaskAPI){
-    this.taskApiService.updateTaskStatus(this.token, task.taskUid, !task.done).subscribe(
+    this.taskApiService.updateTaskStatus(task.taskUid, !task.done).subscribe(
       () => {
         this.fetchTasks();
       }
@@ -80,9 +88,15 @@ export class TaskListComponent {
   }
 
   deleteTask(task: TaskAPI){
-    this.taskApiService.deleteTask(this.token, task.taskUid).subscribe(
+    this.taskApiService.deleteTask(task.taskUid).subscribe(
       ()=>{
         this.fetchTasks();
+        // Envoyer une notification via WebSocket
+        this.webSocketService.sendMessage({
+          event: 'taskDeleted',
+          taskId: task.taskUid,
+          assignedTo: task.assignedToUid
+        });
       }
     );
   }
